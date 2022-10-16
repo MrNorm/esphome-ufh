@@ -1,0 +1,63 @@
+<<: !include secrets.yaml
+
+esphome:
+  name: ufh-manifold-lower
+  platform: esp8266
+  board: nodemcu
+
+# Enable logging
+logger:
+  level: DEBUG
+
+captive_portal:
+
+output:
+  - platform: gpio
+    pin: GPIO16
+    id: 'zone_1'
+  - platform: gpio
+    pin: GPIO14
+    id: 'zone_2'
+  - platform: gpio
+    pin: GPIO12
+    id: 'zone_3'
+  - platform: gpio
+    pin: GPIO13
+    id: 'zone_4'
+  - platform: gpio
+    pin: GPIO15
+    id: 'zone_5'
+  - platform: gpio
+    pin: GPIO0
+    id: 'zone_6'
+  - platform: gpio
+    pin: GPIO4
+    id: 'zone_7'
+  - platform: gpio
+    pin: GPIO5
+    id: 'zone_8'
+switch:
+  - platform: output
+    name: "Zone 1"
+    output: 'zone_1'
+  - platform: output
+    name: "Zone 2"
+    output: 'zone_2'
+  - platform: output
+    name: "Zone 3"
+    output: 'zone_3'
+  - platform: output
+    name: "Zone 4"
+    output: 'zone_4'
+  - platform: output
+    name: "Zone 5"
+    output: 'zone_5'
+  - platform: output
+    name: "Zone 6"
+    output: 'zone_6'
+  - platform: output
+    name: "Zone 7"
+    output: 'zone_7'
+  - platform: output
+    name: "Zone 8"
+    output: 'zone_8'
