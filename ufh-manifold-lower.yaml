@@ -14,50 +14,178 @@ captive_portal:
 output:
   - platform: gpio
     pin: GPIO16
-    id: 'zone_1'
+    id: 'gpio_ashp_heat'
   - platform: gpio
     pin: GPIO14
-    id: 'zone_2'
+    id: 'gpio_zone_1'
   - platform: gpio
     pin: GPIO12
-    id: 'zone_3'
+    id: 'gpio_zone_2'
   - platform: gpio
     pin: GPIO13
-    id: 'zone_4'
+    id: 'gpio_zone_3'
   - platform: gpio
     pin: GPIO15
-    id: 'zone_5'
+    id: 'gpio_zone_4'
   - platform: gpio
     pin: GPIO0
-    id: 'zone_6'
+    id: 'gpio_zone_5'
   - platform: gpio
     pin: GPIO4
-    id: 'zone_7'
-  - platform: gpio
-    pin: GPIO5
-    id: 'zone_8'
+    id: 'gpio_valve_pump'
+
 switch:
   - platform: output
-    name: "Zone 1"
-    output: 'zone_1'
+    id: 'ashp_heat'
+    name: "ASHP Heat"
+    output: 'gpio_ashp_heat'
   - platform: output
-    name: "Zone 2"
-    output: 'zone_2'
+    id: 'zone_1'
+    name: "Zone 1 - Living Room"
+    output: 'gpio_zone_1'
+    on_turn_off:
+      then:
+        script.execute: conditional_off
+    on_turn_on:
+      then:
+        script.execute: heating_on
+
   - platform: output
-    name: "Zone 3"
-    output: 'zone_3'
+    id: 'zone_2'
+    name: "Zone 2 - Hallway"
+    output: 'gpio_zone_2'
+    on_turn_off:
+      then:
+        script.execute: conditional_off
+    on_turn_on:
+      then:
+        script.execute: heating_on
   - platform: output
-    name: "Zone 4"
-    output: 'zone_4'
+    id: 'zone_3'
+    name: "Zone 3 - Kitchen"
+    output: 'gpio_zone_3'
+    on_turn_off:
+      then:
+        script.execute: conditional_off
+    on_turn_on:
+      then:
+        script.execute: heating_on
   - platform: output
-    name: "Zone 5"
-    output: 'zone_5'
+    id: 'zone_4'
+    name: "Zone 4 - Bathroom"
+    output: 'gpio_zone_4'
+    on_turn_off:
+      then:
+        script.execute: conditional_off
+    on_turn_on:
+      then:
+        script.execute: heating_on
   - platform: output
-    name: "Zone 6"
-    output: 'zone_6'
+    id: 'zone_5'
+    name: "Zone 5 - Snug"
+    output: 'gpio_zone_5'
+    on_turn_off:
+      then:
+        script.execute: conditional_off
+    on_turn_on:
+      then:
+        script.execute: heating_on
   - platform: output
-    name: "Zone 7"
-    output: 'zone_7'
-  - platform: output
-    name: "Zone 8"
-    output: 'zone_8'
+    id: 'valve_pump'
+    name: "Valve/Pump"
+    output: 'gpio_valve_pump'
+
+script:
+  - id: conditional_off
+    then:
+      if:
+        condition:
+          and:
+            - switch.is_off: zone_1
+            - switch.is_off: zone_2
+            - switch.is_off: zone_3
+            - switch.is_off: zone_4
+            - switch.is_off: zone_5
+        then:
+          - switch.turn_off: ashp_heat
+          - switch.turn_off: valve_pump
+
+  - id: heating_on
+    then:
+      - switch.turn_on: ashp_heat
+      - switch.turn_on: valve_pump
+
+sensor:
+  - platform: homeassistant
+    id: import_bathroom_environment_sensor_temperature
+    entity_id: sensor.bathroom_environment_sensor_temperature
+  - platform: homeassistant
+    id: import_hallway_environment_sensor_temperature
+    entity_id: sensor.hallway_environment_sensor_temperature
+  - platform: homeassistant
+    id: import_snug_environment_sensor_temperature
+    entity_id: sensor.snug_environment_sensor_temperature
+  - platform: homeassistant
+    id: import_living_room_environment_sensor_temperature
+    entity_id: sensor.living_room_environment_sensor_temperature
+  - platform: homeassistant
+    id: import_kitchen_environment_sensor_temperature
+    entity_id: sensor.kitchen_environment_sensor_temperature
+
+
+climate:
+  - platform: thermostat
+    name: "Living Room - Thermostat"
+    sensor: import_living_room_environment_sensor_temperature
+    default_target_temperature_low: 19 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_1
+    idle_action:
+      - switch.turn_off: zone_1
+  - platform: thermostat
+    name: "Hallway - Thermostat"
+    sensor: import_hallway_environment_sensor_temperature
+    default_target_temperature_low: 19 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_2
+    idle_action:
+      - switch.turn_off: zone_2
+  - platform: thermostat
+    name: "Kitchen - Thermostat"
+    sensor: import_kitchen_environment_sensor_temperature
+    default_target_temperature_low: 19 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_3
+    idle_action:
+      - switch.turn_off: zone_3
+  - platform: thermostat
+    name: "Bathroom - Thermostat"
+    sensor: import_bathroom_environment_sensor_temperature
+    default_target_temperature_low: 19 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_4
+    idle_action:
+      - switch.turn_off: zone_4
+  - platform: thermostat
+    name: "Snug - Thermostat"
+    sensor: import_snug_environment_sensor_temperature
+    default_target_temperature_low: 19 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_5
+    idle_action:
+      - switch.turn_off: zone_5
