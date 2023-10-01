@@ -14,50 +14,192 @@ captive_portal:
 output:
   - platform: gpio
     pin: GPIO16
-    id: 'zone_1'
+    id: 'gpio_zone_1'
   - platform: gpio
     pin: GPIO14
-    id: 'zone_2'
+    id: 'gpio_zone_2'
   - platform: gpio
     pin: GPIO12
-    id: 'zone_3'
+    id: 'gpio_zone_3'
   - platform: gpio
     pin: GPIO13
-    id: 'zone_4'
+    id: 'gpio_valve_pump'
   - platform: gpio
     pin: GPIO15
-    id: 'zone_5'
+    id: 'gpio_zone_4'
   - platform: gpio
     pin: GPIO0
-    id: 'zone_6'
+    id: 'gpio_zone_5'
   - platform: gpio
     pin: GPIO4
-    id: 'zone_7'
+    id: 'gpio_zone_6'
   - platform: gpio
     pin: GPIO5
-    id: 'zone_8'
+    id: 'gpio_ashp_heat'
+
 switch:
   - platform: output
-    name: "Zone 1"
-    output: 'zone_1'
+    id: 'ashp_heat'
+    name: "ASHP Heat"
+    output: 'gpio_ashp_heat'
   - platform: output
-    name: "Zone 2"
-    output: 'zone_2'
+    id: 'zone_1'
+    name: "Zone 1 - Office - Oli"
+    output: 'gpio_zone_1'
+    on_turn_off:
+      then:
+        script.execute: conditional_off
+    on_turn_on:
+      then:
+        script.execute: heating_on
+
   - platform: output
-    name: "Zone 3"
-    output: 'zone_3'
+    id: 'zone_2'
+    name: "Zone 2 - Bedroom"
+    output: 'gpio_zone_2'
+    on_turn_off:
+      then:
+        script.execute: conditional_off
+    on_turn_on:
+      then:
+        script.execute: heating_on
   - platform: output
-    name: "Zone 4"
-    output: 'zone_4'
+    id: 'zone_3'
+    name: "Zone 3 - Office - Mand"
+    output: 'gpio_zone_3'
+    on_turn_off:
+      then:
+        script.execute: conditional_off
+    on_turn_on:
+      then:
+        script.execute: heating_on
   - platform: output
-    name: "Zone 5"
-    output: 'zone_5'
-  - platform: output
-    name: "Zone 6"
-    output: 'zone_6'
-  - platform: output
-    name: "Zone 7"
-    output: 'zone_7'
-  - platform: output
-    name: "Zone 8"
-    output: 'zone_8'
+    id: 'valve_pump'
+    name: "Valve/Pump"
+    output: 'gpio_valve_pump'
+
+script:
+  - id: conditional_off
+    then:
+      if:
+        condition:
+          and:
+            - switch.is_off: zone_1
+            - switch.is_off: zone_2
+            - switch.is_off: zone_3
+        then:
+          - switch.turn_off: ashp_heat
+          - switch.turn_off: valve_pump
+
+  - id: heating_on
+    then:
+      - switch.turn_on: ashp_heat
+      - switch.turn_on: valve_pump
+
+sensor:
+  - platform: homeassistant
+    id: import_office_oli_environment_sensor_temperature
+    entity_id: sensor.office_oli_environment_sensor_temperature
+  - platform: homeassistant
+    id: import_bedroom_environment_sensor_temperature
+    entity_id: sensor.bedroom_environment_sensor_temperature
+  - platform: homeassistant
+    id: import_office_mand_environment_sensor_temperature
+    entity_id: sensor.office_mand_environment_sensor_temperature
+  - platform: template
+    name: "Upstairs Average Temperature"
+    id: upstairs_average_temperature
+    lambda: |-
+      float sum = 0;
+      uint16_t cnt = 0;
+      if (!std::isnan(id(import_office_oli_environment_sensor_temperature).state)) {
+        sum += id(import_office_oli_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (!std::isnan(id(import_bedroom_environment_sensor_temperature).state)) {
+        sum += id(import_bedroom_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (!std::isnan(id(import_office_mand_environment_sensor_temperature).state)) {
+        sum += id(import_office_mand_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (cnt == 0) {
+        return NAN;
+      } else {
+        return (sum / cnt);
+      }
+
+climate:
+  - platform: thermostat
+    name: "Upstairs - Global"
+    sensor: upstairs_average_temperature
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_1
+      - switch.turn_on: zone_2
+      - switch.turn_on: zone_3
+    idle_action:
+      - switch.turn_off: zone_1
+      - switch.turn_off: zone_2
+      - switch.turn_off: zone_3
+  - platform: thermostat
+    name: "Office - Oli - Thermostat"
+    sensor: import_office_oli_environment_sensor_temperature
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_1
+    idle_action:
+      - switch.turn_off: zone_1
+  - platform: thermostat
+    name: "Bedroom - Thermostat"
+    sensor: import_bedroom_environment_sensor_temperature
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_2
+    idle_action:
+      - switch.turn_off: zone_2
+  - platform: thermostat
+    name: "Office - Mand - Thermostat"
+    sensor: import_office_mand_environment_sensor_temperature
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_3
+    idle_action:
+      - switch.turn_off: zone_3

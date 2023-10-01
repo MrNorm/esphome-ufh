@@ -117,6 +117,17 @@ script:
 
 sensor:
   - platform: homeassistant
+    id: import_climate_upstairs_global
+    entity_id: climate.upstairs_global
+    attribute: current_temperature
+  - platform: homeassistant
+    id: import_lounge_floor_temperature
+    entity_id: sensor.lounge_floor_temperature
+    on_value_range:
+      - above: 35.0
+        then:
+          - switch.turn_off: zone_1
+  - platform: homeassistant
     id: import_bathroom_environment_sensor_temperature
     entity_id: sensor.bathroom_environment_sensor_temperature
   - platform: homeassistant
@@ -131,24 +142,88 @@ sensor:
   - platform: homeassistant
     id: import_kitchen_environment_sensor_temperature
     entity_id: sensor.kitchen_environment_sensor_temperature
+  - platform: template
+    name: "Living Room / Diner Average Temperature"
+    id: kitchen_living_room_average
+    lambda: |-
+      float sum = 0;
+      uint16_t cnt = 0;
+      if (!std::isnan(id(import_kitchen_environment_sensor_temperature).state)) {
+        sum += id(import_kitchen_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (!std::isnan(id(import_living_room_environment_sensor_temperature).state)) {
+        sum += id(import_living_room_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (cnt == 0) {
+        return NAN;
+      } else {
+        return (sum / cnt);
+      }
+  - platform: template
+    name: "Ground Floor Average Temperature"
+    id: ground_floor_average
+    lambda: |-
+      float sum = 0;
+      uint16_t cnt = 0;
+      if (!std::isnan(id(import_bathroom_environment_sensor_temperature).state)) {
+        sum += id(import_bathroom_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (!std::isnan(id(import_living_room_environment_sensor_temperature).state)) {
+        sum += id(import_living_room_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (!std::isnan(id(import_kitchen_environment_sensor_temperature).state)) {
+        sum += id(import_kitchen_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (!std::isnan(id(import_hallway_environment_sensor_temperature).state)) {
+        sum += id(import_hallway_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (!std::isnan(id(import_snug_environment_sensor_temperature).state)) {
+        sum += id(import_snug_environment_sensor_temperature).state;
+        cnt += 1;
+      }
+      if (cnt == 0) {
+        return NAN;
+      } else {
+        return (sum / cnt);
+      }
 
 
 climate:
   - platform: thermostat
-    name: "Living Room - Thermostat"
-    sensor: import_living_room_environment_sensor_temperature
-    default_target_temperature_low: 19 °C
+    name: "Living Room  / Diner - Thermostat"
+    sensor: kitchen_living_room_average
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
     min_heating_off_time: 300s
     min_heating_run_time: 300s
     min_idle_time: 30s
     heat_action:
       - switch.turn_on: zone_1
+      - switch.turn_on: zone_3
     idle_action:
       - switch.turn_off: zone_1
+      - switch.turn_off: zone_3
   - platform: thermostat
     name: "Hallway - Thermostat"
     sensor: import_hallway_environment_sensor_temperature
-    default_target_temperature_low: 19 °C
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
     min_heating_off_time: 300s
     min_heating_run_time: 300s
     min_idle_time: 30s
@@ -157,20 +232,32 @@ climate:
     idle_action:
       - switch.turn_off: zone_2
   - platform: thermostat
-    name: "Kitchen - Thermostat"
-    sensor: import_kitchen_environment_sensor_temperature
-    default_target_temperature_low: 19 °C
+    name: "Upstairs - Hallway Booster"
+    sensor: import_climate_upstairs_global
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
     min_heating_off_time: 300s
     min_heating_run_time: 300s
     min_idle_time: 30s
     heat_action:
-      - switch.turn_on: zone_3
+      - switch.turn_on: zone_2
     idle_action:
-      - switch.turn_off: zone_3
+      - switch.turn_off: zone_2
   - platform: thermostat
     name: "Bathroom - Thermostat"
     sensor: import_bathroom_environment_sensor_temperature
-    default_target_temperature_low: 19 °C
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
     min_heating_off_time: 300s
     min_heating_run_time: 300s
     min_idle_time: 30s
@@ -181,11 +268,42 @@ climate:
   - platform: thermostat
     name: "Snug - Thermostat"
     sensor: import_snug_environment_sensor_temperature
-    default_target_temperature_low: 19 °C
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
     min_heating_off_time: 300s
     min_heating_run_time: 300s
     min_idle_time: 30s
     heat_action:
       - switch.turn_on: zone_5
     idle_action:
+      - switch.turn_off: zone_5
+  - platform: thermostat
+    name: "Ground Floor - Thermostat"
+    sensor: ground_floor_average
+    preset:
+      - name: Eco
+        default_target_temperature_low: 16 °C
+      - name: Normal
+        default_target_temperature_low: 19 °C
+      - name: Comfort
+        default_target_temperature_low: 21 °C
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action:
+      - switch.turn_on: zone_1
+      - switch.turn_on: zone_2
+      - switch.turn_on: zone_3
+      - switch.turn_on: zone_4
+      - switch.turn_on: zone_5
+    idle_action:
+      - switch.turn_off: zone_1
+      - switch.turn_off: zone_2
+      - switch.turn_off: zone_3
+      - switch.turn_off: zone_4
       - switch.turn_off: zone_5
